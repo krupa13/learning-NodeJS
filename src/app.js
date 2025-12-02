@@ -3,89 +3,133 @@ const express = require("express");
 const connectDB = require("./config/database");
 const app = express();
 const User = require("./models/user");
-const user = require("./models/user");
+const { validateSignUpData } = require("./utils/validation");
+const bcrypt = require("bcrypt");
 
 app.use(express.json());
 
 app.post("/signup", async (req, res) => {
-    const user = new User(req.body);
 
-    try{
-      await user.save();
-      res.send("User Added Successfully");
-    } catch(err) {
-      res.status(400).send(err.message);
-    }
+  try {
+    //Validate the data
+    validateSignUpData(req);
+
+    const {firstName, lastName, emailId, password} = req.body;
+
+    // Encrypt the password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      firstName,
+      lastName,
+      emailId,
+      password: passwordHash,
+    });
+
+    await user.save();
+    res.send("User Added Successfully");
+  } catch (err) {
+    res.status(400).send(err.message);
+  }
 });
+
+//Login Check
+app.post("/login", async (req, res) => {
+  try {
+    const { emailId, password } = req.body;
+
+    //Find user by email
+    const user = await User.findOne({emailId: emailId});
+    if(!user) {
+      throw new Error("Invalid Login Credentials");
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if(isPasswordValid) {
+      res.send("Login Successful");
+    } else {
+      throw new Error("Invalid Login Credentials");
+    }
+  } catch(err) {
+    res.status(400).send("ERROR: " + err.message);
+  }
+})
 
 //Get user by email
 app.get("/user", async (req, res) => {
-    const userEmail = req.body.emailId;
+  const userEmail = req.body.emailId;
 
-    try{
-        const user = await User.findOne({emailId: userEmail});
-        if(!user) {
-            res.status(404).send("User not found");
-        } else {
-            res.send(user);
-        }
-        // const users = await User.find({emailId: userEmail});
-        // if(users.length === 0) {
-        //     res.status(404).send("User not found");
-        // } else {
-        //     res.send(users);
-        // }
-    } catch(err) {
-        res.status(400).send("Something went wrong: " + err.message);
+  try {
+    const user = await User.findOne({ emailId: userEmail });
+    if (!user) {
+      res.status(404).send("User not found");
+    } else {
+      res.send(user);
     }
-})
+    // const users = await User.find({emailId: userEmail});
+    // if(users.length === 0) {
+    //     res.status(404).send("User not found");
+    // } else {
+    //     res.send(users);
+    // }
+  } catch (err) {
+    res.status(400).send("Something went wrong: " + err.message);
+  }
+});
 
 //Get user by ID
 app.get("/user", async (req, res) => {
-    const userId = req.body._id;
+  const userId = req.body._id;
 
-    try {
-        const user = await User.findOneAndDelete({_id: userId});
-        res.send(user);
-    } catch(err) {
-        res.status(400).send("Something went wrong: " + err.message);
-    }
-})
+  try {
+    const user = await User.findOneAndDelete({ _id: userId });
+    res.send(user);
+  } catch (err) {
+    res.status(400).send("Something went wrong: " + err.message);
+  }
+});
 
 //Feed API - GET/feed - get all the users from the database
 app.get("/feed", async (req, res) => {
-    try{
-        const users = await User.find({});
-        res.send(users);
-    } catch(err) {
-        res.status(400).send("Something went wrong: " + err.message);
-    }
+  try {
+    const users = await User.find({});
+    res.send(users);
+  } catch (err) {
+    res.status(400).send("Something went wrong: " + err.message);
+  }
 });
 
 //Update dat of the user
-app.patch("/user", async (req, res) => {
-    const userId = req.body._id;
-    const data = req.body;
+app.patch("/user/:_id", async (req, res) => {
+  const userId = req.params?._id;
+  const data = req.body;
 
-    try {
-        const user = await User.findByIdAndUpdate({_id: userId}, data, {
-            runValidators: true
-        });
-        res.send("User updated successfully");
-    } catch (err) {
-        res.status(400).send("Error in updating user: " + err.message);
+  try {
+    const ALLOWED_UPDATES = ["skills", "about", "photoURL"];
+    const isAllowed = Object.keys(data).every((k) =>
+      ALLOWED_UPDATES.includes(k)
+    );
+    if(!isAllowed) {
+        throw new Error("Invlid updates!");
     }
+    const user = await User.findByIdAndUpdate({ _id: userId }, data, {
+      runValidators: true,
+    });
+    res.send("User updated successfully");
+  } catch (err) {
+    res.status(400).send("Error in updating user: " + err.message);
+  }
 });
 
 console.log("Attempting to connect to MongoDB...");
 connectDB()
-    .then(() => {
-        console.log("Database connection successful");
-        app.listen(7777, () => {
-            console.log("Server is successfully connected...");
-        });
-    })
-    .catch((err) => {
-        console.error("Database connection failed:", err.message);
-        process.exit(1);
+  .then(() => {
+    console.log("Database connection successful");
+    app.listen(7777, () => {
+      console.log("Server is successfully connected...");
     });
+  })
+  .catch((err) => {
+    console.error("Database connection failed:", err.message);
+    process.exit(1);
+  });
