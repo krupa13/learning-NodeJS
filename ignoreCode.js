@@ -73,3 +73,69 @@
 //         res.status(500).send("something went wrong");
 //     }
 // });
+
+//Get user by email
+// app.get("/user", async (req, res) => {
+//   const userEmail = req.body.emailId;
+
+//   try {
+//     const user = await User.findOne({ emailId: userEmail });
+//     if (!user) {
+//       res.status(404).send("User not found");
+//     } else {
+//       res.send(user);
+//     }
+//     // const users = await User.find({emailId: userEmail});
+//     // if(users.length === 0) {
+//     //     res.status(404).send("User not found");
+//     // } else {
+//     //     res.send(users);
+//     // }
+//   } catch (err) {
+//     res.status(400).send("Something went wrong: " + err.message);
+//   }
+// });
+
+// //Get user by ID
+// app.get("/user", async (req, res) => {
+//   const userId = req.body._id;
+
+//   try {
+//     const user = await User.findOneAndDelete({ _id: userId });
+//     res.send(user);
+//   } catch (err) {
+//     res.status(400).send("Something went wrong: " + err.message);
+//   }
+// });
+
+// //Feed API - GET/feed - get all the users from the database
+// app.get("/feed", async (req, res) => {
+//   try {
+//     const users = await User.find({});
+//     res.send(users);
+//   } catch (err) {
+//     res.status(400).send("Something went wrong: " + err.message);
+//   }
+// });
+
+// //Update dat of the user
+// app.patch("/user/:_id", async (req, res) => {
+//   const userId = req.params?._id;
+//   const data = req.body;
+
+//   try {
+//     const ALLOWED_UPDATES = ["skills", "about", "photoURL"];
+//     const isAllowed = Object.keys(data).every((k) =>
+//       ALLOWED_UPDATES.includes(k)
+//     );
+//     if (!isAllowed) {
+//       throw new Error("Invlid updates!");
+//     }
+//     const user = await User.findByIdAndUpdate({ _id: userId }, data, {
+//       runValidators: true,
+//     });
+//     res.send("User updated successfully");
+//   } catch (err) {
+//     res.status(400).send("Error in updating user: " + err.message);
+//   }
+// });

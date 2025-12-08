@@ -5,16 +5,19 @@ const app = express();
 const User = require("./models/user");
 const { validateSignUpData } = require("./utils/validation");
 const bcrypt = require("bcrypt");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+const { userAuth } = require("./middlewares/auth");
 
 app.use(express.json());
+app.use(cookieParser());
 
 app.post("/signup", async (req, res) => {
-
   try {
     //Validate the data
     validateSignUpData(req);
 
-    const {firstName, lastName, emailId, password} = req.body;
+    const { firstName, lastName, emailId, password } = req.body;
 
     // Encrypt the password
     const passwordHash = await bcrypt.hash(password, 10);
@@ -39,85 +42,51 @@ app.post("/login", async (req, res) => {
     const { emailId, password } = req.body;
 
     //Find user by email
-    const user = await User.findOne({emailId: emailId});
-    if(!user) {
+    const user = await User.findOne({ emailId: emailId });
+    if (!user) {
       throw new Error("Invalid Login Credentials");
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if(isPasswordValid) {
+    if (isPasswordValid) {
+      //Create a JWT token
+      const token = await jwt.sign({ _id: user._id }, "DEV@TINDER@dgvds", {
+        expiresIn: "1h",
+      });
+      if (!token) {
+        throw new Error("Token is invalid");
+      }
+
+      // Add the token to cookie and send response back
+      res.cookie("token", token, {
+        expires: new Date(Date.now() + 3600000) // Expires in 1 hour
+      });
+
       res.send("Login Successful");
     } else {
       throw new Error("Invalid Login Credentials");
     }
-  } catch(err) {
+  } catch (err) {
     res.status(400).send("ERROR: " + err.message);
   }
-})
+});
 
-//Get user by email
-app.get("/user", async (req, res) => {
-  const userEmail = req.body.emailId;
-
+//Read cookie back
+app.get("/profile", userAuth, async (req, res) => {
   try {
-    const user = await User.findOne({ emailId: userEmail });
-    if (!user) {
-      res.status(404).send("User not found");
-    } else {
-      res.send(user);
-    }
-    // const users = await User.find({emailId: userEmail});
-    // if(users.length === 0) {
-    //     res.status(404).send("User not found");
-    // } else {
-    //     res.send(users);
-    // }
+    const user = req.user; // Checks the user is existed or not
+    res.send(user); // Sending back the user data
   } catch (err) {
-    res.status(400).send("Something went wrong: " + err.message);
+    res.status(400).send("ERROR: " + err.message);
   }
 });
 
-//Get user by ID
-app.get("/user", async (req, res) => {
-  const userId = req.body._id;
-
+app.post("/sendConnectionRequest", userAuth, async (req, res) => {
   try {
-    const user = await User.findOneAndDelete({ _id: userId });
-    res.send(user);
-  } catch (err) {
-    res.status(400).send("Something went wrong: " + err.message);
-  }
-});
-
-//Feed API - GET/feed - get all the users from the database
-app.get("/feed", async (req, res) => {
-  try {
-    const users = await User.find({});
-    res.send(users);
-  } catch (err) {
-    res.status(400).send("Something went wrong: " + err.message);
-  }
-});
-
-//Update dat of the user
-app.patch("/user/:_id", async (req, res) => {
-  const userId = req.params?._id;
-  const data = req.body;
-
-  try {
-    const ALLOWED_UPDATES = ["skills", "about", "photoURL"];
-    const isAllowed = Object.keys(data).every((k) =>
-      ALLOWED_UPDATES.includes(k)
-    );
-    if(!isAllowed) {
-        throw new Error("Invlid updates!");
-    }
-    const user = await User.findByIdAndUpdate({ _id: userId }, data, {
-      runValidators: true,
-    });
-    res.send("User updated successfully");
-  } catch (err) {
-    res.status(400).send("Error in updating user: " + err.message);
+    const user = req.user;
+    res.send(user.firstName + " sent you a connection request.");
+  } catch(err) {
+    res.status(400).send("ERROR: " + err.message);
   }
 });
 
