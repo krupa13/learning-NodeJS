@@ -9,7 +9,7 @@ const userAuth = async (req, res, next) => {
       return res.status(401).send("Please Login!!");
     }
 
-    const decodeObj = await jwt.verify(token, "DEV@TINDER@dgvds");
+    const decodeObj = await jwt.verify(token, process.env.JWT_SECRET);
     //If I get the decodeobj, then only i will the _id and user allwoed to process
     const { _id } = decodeObj;
     const user = await User.findById(_id);
