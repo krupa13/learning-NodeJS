@@ -48,6 +48,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "Hey there! I am using this app.",
     },
+    isPremium: {
+      type: Boolean,
+      default: false,
+    },
+    membershipType: {
+      type: String,
+    },
     photoURL: {
       type: String,
       default: "http://example.com/default-photo.jpg",
@@ -67,7 +74,6 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.methods.getJWT = async function () {
-  
   const user = this; // this represents the user document (It'll get jwt token for particular user)
 
   const token = await jwt.sign({ _id: user._id }, "DEV@TINDER@dgvds", {
