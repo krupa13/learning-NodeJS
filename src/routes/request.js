@@ -5,6 +5,8 @@ const { userAuth } = require("../middlewares/auth");
 const ConnectionRequest = require("../models/connectionRequest");
 const User = require("../models/user");
 
+const sendEmail = require("../utils/sendEmail");
+
 requestRouter.post(
   "/request/send/:status/:toUserId",
   userAuth,
@@ -46,11 +48,20 @@ requestRouter.post(
 
       const data = await connectionRequest.save();
 
-      // const emailRes = await sendEmail.run(
-      //   "A new friend request from " + req.user.firstName,
-      //   req.user.firstName + " is " + status + " in " + toUser.firstName
-      // );
-      // console.log(emailRes);
+
+      // Industry-standard subject and body for connection request notification
+      const emailSubject = `New Connection Request from ${req.user.firstName} ${req.user.lastName}`;
+      const emailBody = `
+        Hello ${toUser.firstName},<br><br>
+        You have received a new connection request on DevMeet.<br><br>
+        <strong>From:</strong> ${req.user.firstName} ${req.user.lastName} (${req.user.emailId})<br>
+        <strong>Status:</strong> ${status.charAt(0).toUpperCase() + status.slice(1)}<br><br>
+        Please log in to your account to view and respond to this request.<br><br>
+        Best regards,<br>
+        The DevMeet Team
+      `;
+      const emailRes = await sendEmail.run(emailSubject, emailBody);
+      console.log(emailRes);
 
       res.json({
         message:
